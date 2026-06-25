@@ -1,7 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Produces a self-contained server bundle for containerised hosting
+  // (Google Cloud Run, which is what AI Studio's "Publish" deploys to).
+  output: 'standalone',
 };
 
 export default nextConfig;

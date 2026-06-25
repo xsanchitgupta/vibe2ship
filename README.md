@@ -147,13 +147,9 @@ gcloud run deploy community-hero --source . --set-env-vars GEMINI_API_KEY=...
 - **Technical implementation** — typed, modular, secure (server-side key), clean build.
 - **Completeness & usability** — every feature is wired end-to-end and works, with graceful AI fallbacks.
 
-### Roles & demo account
-Two roles: **citizen** (report, verify, track) and **authority** (claim → acknowledge → resolve, with the AI Ops Co-pilot). A ready authority login for judges:
+### Roles & demo access
+Two roles: **citizen** (report, verify, track) and **authority** (claim → acknowledge → resolve, with the AI Ops Co-pilot).
 
-```
-authority@demo.com  /  hero1234
-```
-
-Citizens sign in with a passwordless email OTP code. To make any user an authority, see the snippet in `SETUP.md`.
+Sign-in is **passwordless email OTP**. To explore the **Authority Console** instantly, click **“Enter as demo authority”** on the `/login` page — it's one-click (no email/password needed; the server mints a session for a pre-seeded authority account). Citizens sign in with their own email + a one-time code. To promote any real user to authority, see the snippet in `SETUP.md`.
 
 > **Resilience:** every integration degrades gracefully. Without Supabase the app uses a seeded in-memory store; without a Maps key it uses a built-in SVG map; without Gemini it uses a heuristic classifier. The data layer is isolated behind `lib/data.ts`.
