@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, ShieldCheck, KeyRound, ArrowLeft, Building2 } from 'lucide-react';
@@ -17,6 +17,16 @@ export default function LoginPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const sb = createClient();
+
+  useEffect(() => {
+    if (!sb) return;
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
+        window.location.href = next;
+      }
+    });
+  }, [sb]);
 
   async function sendOtp(e?: React.FormEvent) {
     e?.preventDefault();
@@ -46,8 +56,7 @@ export default function LoginPage() {
       if (error) throw error;
       if (data.session) {
         const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
-        router.push(next);
-        router.refresh();
+        window.location.href = next;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
@@ -66,8 +75,7 @@ export default function LoginPage() {
       const { data, error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
       if (error) throw error;
       if (data.session) {
-        router.push('/authority');
-        router.refresh();
+        window.location.href = '/authority';
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
