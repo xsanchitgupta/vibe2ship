@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, ShieldCheck, KeyRound, ArrowLeft, Building2 } from 'lucide-react';
@@ -13,32 +13,21 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const redirectingRef = useRef(false);
 
   const sb = createClient();
-
   const router = useRouter();
 
-  // If already signed in, bounce immediately
+  const getNext = () =>
+    new URLSearchParams(window.location.search).get('next') || '/dashboard';
+
+  // If already signed in, bounce immediately.
   useEffect(() => {
     if (!sb) return;
-    sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
-        router.push(next);
-      }
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (user) router.replace(getNext());
     });
-
-    // Listen for auth state changes — this fires reliably after verifyOtp
-    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
-        router.push(next);
-      }
-    });
-    return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sb, router]);
+  }, []);
 
   async function sendOtp(e?: React.FormEvent) {
     e?.preventDefault();
@@ -66,7 +55,12 @@ export default function LoginPage() {
     try {
       const { error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
       if (error) throw error;
-      // The onAuthStateChange listener will handle the redirect
+
+      // Wait a beat so the browser client finishes writing cookies, then do a
+      // full page navigation. The middleware will refresh the token and set
+      // proper HTTP cookies on the server side — this is what makes it stick.
+      await new Promise((r) => setTimeout(r, 300));
+      window.location.href = getNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
       setBusy(false);
@@ -82,7 +76,9 @@ export default function LoginPage() {
       if (!r.otp) throw new Error(r.error || 'Demo unavailable');
       const { error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
       if (error) throw error;
-      // The onAuthStateChange listener will handle the redirect
+
+      await new Promise((r) => setTimeout(r, 300));
+      window.location.href = getNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
       setBusy(false);
