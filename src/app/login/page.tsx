@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, ShieldCheck, KeyRound, ArrowLeft, Building2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -16,32 +17,28 @@ export default function LoginPage() {
 
   const sb = createClient();
 
-  // Redirect helper — avoids double-redirects
-  function doRedirect(path?: string) {
-    if (redirectingRef.current) return;
-    redirectingRef.current = true;
-    const next = path || new URLSearchParams(window.location.search).get('next') || '/dashboard';
-    window.location.replace(next);
-  }
+  const router = useRouter();
 
   // If already signed in, bounce immediately
   useEffect(() => {
     if (!sb) return;
     sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) doRedirect();
+      if (session) {
+        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
+        router.push(next);
+      }
     });
 
     // Listen for auth state changes — this fires reliably after verifyOtp
     const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        // Wait briefly for @supabase/ssr's internal listener to write the cookies
-        // before we navigate away, otherwise the session is lost.
-        setTimeout(() => doRedirect(), 150);
+        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
+        router.push(next);
       }
     });
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sb]);
+  }, [sb, router]);
 
   async function sendOtp(e?: React.FormEvent) {
     e?.preventDefault();
