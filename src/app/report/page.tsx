@@ -15,9 +15,11 @@ import {
   ArrowRight,
   Layers,
   Bot,
+  LogIn,
+  Mic
 } from 'lucide-react';
-import { LogIn, Mic } from 'lucide-react';
 import AgentTimeline from '@/components/AgentTimeline';
+import LocationInput from '@/components/LocationInput';
 import { CategoryIcon, SeverityBadge, priorityColor } from '@/components/ui';
 import { useSession } from '@/lib/useSession';
 import { supabaseEnabled } from '@/lib/config';
@@ -81,19 +83,6 @@ export default function ReportPage() {
     setResult(null);
     setSteps([]);
     setWarning(null);
-  }
-
-  function useMyLocation() {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-      },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
   }
 
   async function submit(e: React.FormEvent) {
@@ -260,26 +249,14 @@ export default function ReportPage() {
             <label className="input-label">
               <MapPin size={15} /> Location
             </label>
-            <div className="flex gap-2">
-              <input
-                className="input-field"
-                placeholder="e.g. Indiranagar, near 100ft Road"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={useMyLocation}
-                disabled={locating}
-                style={{ whiteSpace: 'nowrap' }}
-              >
-                {locating ? <Loader2 size={15} className="spin" /> : <Crosshair size={15} />}
-                {coords ? 'Located' : 'Use GPS'}
-              </button>
-            </div>
+            <LocationInput
+              location={location}
+              setLocation={setLocation}
+              onLocationFound={setCoords}
+              coords={coords}
+            />
             {coords && (
-              <span className="tiny" style={{ color: '#15803d' }}>
+              <span className="tiny" style={{ color: '#15803d', marginTop: '0.25rem', display: 'block' }}>
                 ✓ Pinned at {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
               </span>
             )}
