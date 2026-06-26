@@ -53,12 +53,15 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const { error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
-      if (error) throw error;
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otp.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Verification failed');
 
-      await new Promise((r) => setTimeout(r, 150));
-      router.push(getNext());
-      router.refresh();
+      window.location.href = getNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
       setBusy(false);
@@ -72,12 +75,15 @@ export default function LoginPage() {
     try {
       const r = await fetch('/api/demo-login', { method: 'POST' }).then((x) => x.json());
       if (!r.otp) throw new Error(r.error || 'Demo unavailable');
-      const { error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
-      if (error) throw error;
+      const verifyRes = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: r.email, otp: r.otp }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed');
 
-      await new Promise((r) => setTimeout(r, 150));
-      router.push(getNext());
-      router.refresh();
+      window.location.href = getNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
       setBusy(false);
