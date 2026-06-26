@@ -6,7 +6,6 @@ import type {
   IssueStatus,
   Severity,
 } from './types';
-import { seedCitizens, seedIssues } from './seed';
 import { reportPoints } from './departments';
 import { haversine } from './geo';
 
@@ -27,28 +26,8 @@ interface DB {
 const g = globalThis as unknown as { __communityHeroDB?: DB };
 
 function init(): DB {
-  const issues = seedIssues();
-  const citizens = seedCitizens();
-  const byName = new Map(citizens.map((c) => [c.name, c]));
-
-  // derive seeded gamification stats from the seed reports
-  issues.forEach((iss) => {
-    const c = byName.get(iss.reporter);
-    if (c) {
-      c.reports += 1;
-      c.points += reportPoints(iss.severity);
-      if (iss.status === 'Resolved') {
-        c.resolvedImpact += 1;
-        c.points += 15;
-      }
-    }
-  });
-  citizens.forEach((c, i) => {
-    c.verifications = Math.round(c.reports * 2.5) + ((i * 3) % 7);
-    c.points += c.verifications * 5;
-  });
-
-  return { issues, citizens, seq: 1000 + issues.length, wo: 5200 };
+  // Start empty — no seeded/demo data. Real reports fill it in.
+  return { issues: [], citizens: [], seq: 1000, wo: 5200 };
 }
 
 function db(): DB {

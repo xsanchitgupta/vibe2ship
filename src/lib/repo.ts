@@ -2,8 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from './supabase/server';
 import { computeHotspots, computeStats, type Hotspot, type Stats } from './analytics';
 import { haversine } from './geo';
-import { reportPoints } from './departments';
-import { seedIssues } from './seed';
 import type {
   Citizen,
   GeoPoint,
@@ -118,60 +116,9 @@ async function issueCount(): Promise<number> {
   return count ?? 0;
 }
 
-// ----- lazy seed (runs once per process) -----------------------------------
-let seedPromise: Promise<void> | null = null;
-function ensureSeed(): Promise<void> {
-  if (!seedPromise) seedPromise = doSeed();
-  return seedPromise;
-}
-async function doSeed(): Promise<void> {
-  try {
-    if ((await issueCount()) >= 16) return;
-    const seeds = seedIssues();
-    const rows = seeds.map((s) => ({
-      ref: s.id, // seed ids (CH-10xx) become refs
-      title: s.title,
-      description: s.description,
-      category: s.category,
-      severity: s.severity,
-      status: s.status,
-      priority: s.priority,
-      confidence: s.confidence,
-      safety_risk: s.safetyRisk,
-      tags: s.tags,
-      location: s.location,
-      lat: s.geo.lat,
-      lng: s.geo.lng,
-      department: s.department,
-      sla_hours: s.slaHours,
-      work_order_id: s.workOrderId,
-      advisory: s.advisory,
-      reporter_name: s.reporter,
-      verifications: s.verifications,
-      created_at: s.createdAt,
-      updated_at: s.updatedAt,
-    }));
-    const { data: inserted } = await db()
-      .from('issues')
-      .upsert(rows, { onConflict: 'ref', ignoreDuplicates: true })
-      .select('id, ref');
-    if (inserted?.length) {
-      const byRef = new Map(seeds.map((s) => [s.id, s]));
-      const events = inserted.flatMap((row: { id: string; ref: string }) => {
-        const s = byRef.get(row.ref);
-        return (s?.timeline ?? []).map((ev) => ({
-          issue_id: row.id,
-          status: ev.status,
-          note: ev.note,
-          actor: ev.actor,
-          at: ev.at,
-        }));
-      });
-      if (events.length) await db().from('timeline_events').insert(events);
-    }
-  } catch (err) {
-    console.error('supabase seed failed', err);
-  }
+// Seeding disabled — the app starts clean and fills with real citizen reports.
+async function ensureSeed(): Promise<void> {
+  /* no-op */
 }
 
 // ----- reads ----------------------------------------------------------------
@@ -477,19 +424,11 @@ export async function escalateOverdue(): Promise<number> {
   return count;
 }
 
-// ----- leaderboard ----------------------------------------------------------
-const SYNTH_AVATARS = ['🧑', '👩‍🔧', '🧑‍💼', '👩‍⚕️', '🧑‍🌾', '👨‍🚒', '🧑‍🎓', '👩‍💻'];
-
+// ----- leaderboard (real signed-up accounts only) ---------------------------
 export async function getLeaderboard(): Promise<Citizen[]> {
-  await ensureSeed();
-  const [{ data: profiles }, { data: issues }] = await Promise.all([
-    db().from('profiles').select('*'),
-    db().from('issues').select('reporter_id, reporter_name, severity, status'),
-  ]);
-
-  const byName = new Map<string, Citizen>();
-  (profiles ?? []).forEach((p: { id: string; name: string; avatar: string; points: number; reports: number; verifications: number; resolved_impact: number }) => {
-    byName.set(p.name, {
+  const { data: profiles } = await db().from('profiles').select('*');
+  return (profiles ?? [])
+    .map((p: { id: string; name: string; avatar: string; points: number; reports: number; verifications: number; resolved_impact: number }) => ({
       id: p.id,
       name: p.name,
       avatar: p.avatar,
@@ -497,41 +436,8 @@ export async function getLeaderboard(): Promise<Citizen[]> {
       reports: p.reports,
       verifications: p.verifications,
       resolvedImpact: p.resolved_impact,
-    });
-  });
-
-  // synthesize citizens for seeded reporters that have no real account
-  (issues ?? []).forEach((i: { reporter_id: string | null; reporter_name: string; severity: Severity; status: IssueStatus }) => {
-    if (i.reporter_id) return; // already counted via their profile triggers
-    let c = byName.get(i.reporter_name);
-    if (!c) {
-      c = {
-        id: `seed-${i.reporter_name}`,
-        name: i.reporter_name,
-        avatar: SYNTH_AVATARS[i.reporter_name.length % SYNTH_AVATARS.length],
-        points: 0,
-        reports: 0,
-        verifications: 0,
-        resolvedImpact: 0,
-      };
-      byName.set(i.reporter_name, c);
-    }
-    c.reports += 1;
-    c.points += reportPoints(i.severity);
-    if (i.status === 'Resolved') {
-      c.resolvedImpact += 1;
-      c.points += 15;
-    }
-  });
-
-  const list = [...byName.values()];
-  list.forEach((c) => {
-    if (c.id.startsWith('seed-')) {
-      c.verifications = Math.round(c.reports * 2.5);
-      c.points += c.verifications * 5;
-    }
-  });
-  return list.sort((a, b) => b.points - a.points);
+    }))
+    .sort((a, b) => b.points - a.points);
 }
 
 // ----- per-user activity (profile page) ------------------------------------

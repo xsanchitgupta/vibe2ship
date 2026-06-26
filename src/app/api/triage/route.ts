@@ -3,6 +3,7 @@ import { nearestLocality, resolveLocation } from '@/lib/geo';
 import { getProfile } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { supabaseEnabled } from '@/lib/config';
+import { clientIp, rateLimit, tooMany } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,9 @@ export const maxDuration = 60;
 // Streams the Civic Triage Agent's work as newline-delimited JSON so the client
 // can render each reasoning/tool step live, then a final result event.
 export async function POST(req: Request) {
+  const rl = rateLimit(`triage:${clientIp(req)}`, 8, 60_000);
+  if (!rl.ok) return tooMany(rl.retryAfter, "You're reporting very fast — please wait a moment and try again.");
+
   let form: FormData;
   try {
     form = await req.formData();

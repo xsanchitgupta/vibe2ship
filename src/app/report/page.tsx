@@ -167,6 +167,9 @@ export default function ReportPage() {
       setResult(ev.issue);
       if (ev.warning) setWarning(ev.warning);
       toast(`Filed ${ev.issue.workOrderId} · routed to ${ev.issue.department}`, 'success');
+    } else if (ev.type === 'rejected') {
+      setWarning(ev.message ?? "That photo doesn't look like a community issue.");
+      toast('Photo not accepted — not a community issue.', 'error');
     } else if (ev.type === 'error') {
       setWarning(ev.message ?? 'Agent error');
       toast('The agent hit an error — please try again.', 'error');

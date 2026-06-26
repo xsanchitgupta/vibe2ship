@@ -1,6 +1,7 @@
 import { addComment, getComments } from '@/lib/repo';
 import { getProfile } from '@/lib/auth';
 import { supabaseEnabled } from '@/lib/config';
+import { clientIp, rateLimit, tooMany } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,9 @@ export async function GET(_req: Request, ctx: RouteContext<'/api/issues/[id]/com
 }
 
 export async function POST(req: Request, ctx: RouteContext<'/api/issues/[id]/comments'>) {
+  const rl = rateLimit(`comment:${clientIp(req)}`, 20, 60_000);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   const { id } = await ctx.params;
   if (!supabaseEnabled()) return Response.json({ error: 'Unavailable' }, { status: 400 });
 

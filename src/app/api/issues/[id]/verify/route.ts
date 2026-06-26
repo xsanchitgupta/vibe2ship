@@ -1,10 +1,14 @@
 import { verifyIssue } from '@/lib/data';
 import { getUserId } from '@/lib/auth';
 import { supabaseEnabled } from '@/lib/config';
+import { clientIp, rateLimit, tooMany } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(_req: Request, ctx: RouteContext<'/api/issues/[id]/verify'>) {
+export async function POST(req: Request, ctx: RouteContext<'/api/issues/[id]/verify'>) {
+  const rl = rateLimit(`verify:${clientIp(req)}`, 30, 60_000);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   const { id } = await ctx.params;
 
   let userId: string | undefined;

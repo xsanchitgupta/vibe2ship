@@ -28,7 +28,8 @@ export interface TriageInput {
 
 export type AgentEvent =
   | { type: 'step'; step: AgentStep }
-  | { type: 'result'; issue: Issue; warning?: string };
+  | { type: 'result'; issue: Issue; warning?: string }
+  | { type: 'rejected'; message: string };
 
 interface VisionResult {
   isCivicIssue: boolean;
@@ -349,6 +350,18 @@ export async function* runTriageAgent(
       { tool: 'vision', data: { ...vision } },
     ),
   };
+
+  // Content moderation: don't file photos that clearly aren't a public/community
+  // issue. (Heuristic fallback always returns isCivicIssue=true, so this only
+  // triggers when Gemini Vision is confident it's not civic.)
+  if (!vision.isCivicIssue) {
+    yield {
+      type: 'rejected',
+      message:
+        "That photo doesn't look like a public community issue, so it wasn't filed. Please capture the actual problem — a pothole, leak, garbage pile, broken streetlight, etc.",
+    };
+    return;
+  }
 
   // collected state
   let department = DEPARTMENTS[vision.category];

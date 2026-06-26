@@ -184,15 +184,4 @@ create policy "issue photos read" on storage.objects for select using (bucket_id
 drop policy if exists "issue photos upload" on storage.objects;
 create policy "issue photos upload" on storage.objects for insert to authenticated with check (bucket_id = 'issue-photos');
 
--- ───────────────────── minimal seed (optional) ──────────────────
--- A few rows so the app isn't empty before the in-app seeder runs.
-insert into public.issues (ref,title,description,category,severity,status,priority,confidence,safety_risk,tags,location,lat,lng,department,sla_hours,work_order_id,advisory,reporter_name,verifications,created_at,updated_at) values
-('CH-1001','Deep crater swallowing two-wheelers','A ~1m pothole in the fast lane near the junction; bikes swerve into oncoming traffic.','Pothole','Critical','In Progress',96,0.96,'High collision risk for two-wheelers.','{road,collision-risk}','MG Road, Bengaluru',12.9756,77.6068,'Roads & Infrastructure Cell',72,'WO-5209','Routed to Roads & Infrastructure Cell, priority 96/100.','Aarav Mehta',23, now() - interval '5 hours', now() - interval '1 hours'),
-('CH-1002','Burst pipeline flooding the road','A water main has burst and is gushing onto the carriageway.','Water Leak','Critical','Acknowledged',93,0.93,'Drinking-water loss and slip hazard.','{water-waste,flooding}','Jayanagar, Bengaluru',12.9250,77.5938,'Water Supply & Sewerage Board',24,'WO-5218','Routed to Water Supply & Sewerage Board, priority 93/100.','Diya Sharma',31, now() - interval '9 hours', now() - interval '2 hours'),
-('CH-1003','Entire street in darkness','A row of five streetlights dead for over a week.','Streetlight','High','Reported',78,0.90,'Poor visibility raises night-time safety concerns.','{lighting,night-safety}','HSR Layout, Bengaluru',12.9116,77.6389,'Street Lighting & Electrical',48,'WO-5227','Routed to Street Lighting & Electrical, priority 78/100.','Kabir Nair',14, now() - interval '30 hours', now() - interval '30 hours'),
-('CH-1004','Overflowing garbage at market corner','Mixed waste piling beside the vegetable market; strays scattering it.','Garbage','High','Reported',80,0.88,'Sanitation and public-health hazard.','{waste,public-health}','BTM Layout, Bengaluru',12.9166,77.6101,'Solid Waste Management',12,'WO-5236','Routed to Solid Waste Management, priority 80/100.','Ananya Rao',19, now() - interval '14 hours', now() - interval '14 hours')
-on conflict (ref) do nothing;
-
-insert into public.timeline_events (issue_id, status, note, actor, at)
-select id, 'Reported', 'Filed and triaged by the AI agent.', 'Triage Agent', created_at from public.issues
-on conflict do nothing;
+-- (No seed data — the app starts clean and fills with real citizen reports.)
