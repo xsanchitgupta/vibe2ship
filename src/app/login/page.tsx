@@ -56,11 +56,9 @@ export default function LoginPage() {
       const { error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
       if (error) throw error;
 
-      // Wait a beat so the browser client finishes writing cookies, then do a
-      // full page navigation. The middleware will refresh the token and set
-      // proper HTTP cookies on the server side — this is what makes it stick.
-      await new Promise((r) => setTimeout(r, 300));
-      window.location.href = getNext();
+      await new Promise((r) => setTimeout(r, 150));
+      router.push(getNext());
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
       setBusy(false);
@@ -77,8 +75,9 @@ export default function LoginPage() {
       const { error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
       if (error) throw error;
 
-      await new Promise((r) => setTimeout(r, 300));
-      window.location.href = getNext();
+      await new Promise((r) => setTimeout(r, 150));
+      router.push(getNext());
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
       setBusy(false);
