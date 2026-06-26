@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
         supabaseResponse = NextResponse.next({ request });
         // 3. Set the same cookies on the response (so they reach the browser)
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options),
+          supabaseResponse.cookies.set(name, value, { ...options, httpOnly: false }),
         );
       },
     },
