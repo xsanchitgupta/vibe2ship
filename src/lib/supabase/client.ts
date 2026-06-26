@@ -6,5 +6,13 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, supabaseEnabled } from '@/lib/config';
 // Browser client — used for auth UI and realtime subscriptions.
 export function createClient() {
   if (!supabaseEnabled()) return null;
-  return createBrowserClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
+  return createBrowserClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+    cookieOptions: {
+      name: 'sb-auth',
+      domain: typeof window !== 'undefined' ? window.location.hostname : '',
+      path: '/',
+      sameSite: 'lax',
+      secure: typeof window !== 'undefined' ? window.location.protocol === 'https:' : false,
+    }
+  });
 }
