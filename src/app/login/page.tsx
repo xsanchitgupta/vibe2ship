@@ -1,31 +1,46 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, ShieldCheck, KeyRound, ArrowLeft, Building2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const redirectingRef = useRef(false);
 
   const sb = createClient();
 
+  // Redirect helper — avoids double-redirects
+  function doRedirect(path?: string) {
+    if (redirectingRef.current) return;
+    redirectingRef.current = true;
+    const next = path || new URLSearchParams(window.location.search).get('next') || '/dashboard';
+    window.location.replace(next);
+  }
+
+  // If already signed in, bounce immediately
   useEffect(() => {
     if (!sb) return;
     sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
-        window.location.href = next;
+      if (session) doRedirect();
+    });
+
+    // Listen for auth state changes — this fires reliably after verifyOtp
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        // Wait briefly for @supabase/ssr's internal listener to write the cookies
+        // before we navigate away, otherwise the session is lost.
+        setTimeout(() => doRedirect(), 150);
       }
     });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sb]);
 
   async function sendOtp(e?: React.FormEvent) {
@@ -52,15 +67,11 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const { data, error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
+      const { error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
       if (error) throw error;
-      if (data.session) {
-        const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
-        window.location.href = next;
-      }
+      // The onAuthStateChange listener will handle the redirect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
-    } finally {
       setBusy(false);
     }
   }
@@ -72,14 +83,11 @@ export default function LoginPage() {
     try {
       const r = await fetch('/api/demo-login', { method: 'POST' }).then((x) => x.json());
       if (!r.otp) throw new Error(r.error || 'Demo unavailable');
-      const { data, error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
+      const { error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
       if (error) throw error;
-      if (data.session) {
-        window.location.href = '/authority';
-      }
+      // The onAuthStateChange listener will handle the redirect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
-    } finally {
       setBusy(false);
     }
   }
