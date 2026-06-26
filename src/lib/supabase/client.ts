@@ -8,7 +8,6 @@ export function createClient() {
   if (!supabaseEnabled()) return null;
   return createBrowserClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     cookieOptions: {
-      name: 'sb-auth',
       domain: typeof window !== 'undefined' ? window.location.hostname : '',
       path: '/',
       sameSite: 'lax',
