@@ -1,5 +1,5 @@
 // Community Hero service worker — minimal offline shell + static cache.
-const CACHE = 'community-hero-v1';
+const CACHE = 'community-hero-v2';
 const SHELL = ['/', '/dashboard', '/map', '/report', '/leaderboard'];
 
 self.addEventListener('install', (event) => {

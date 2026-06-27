@@ -53,15 +53,12 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otp.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Verification failed');
-
-      window.location.href = getNext();
+      // Verify on the BROWSER client so it stores the session in cookies that
+      // both the client (getSession/onAuthStateChange) and the server (SSR) read.
+      const { data, error } = await sb.auth.verifyOtp({ email, token: otp.trim(), type: 'email' });
+      if (error) throw error;
+      if (!data.session) throw new Error('Could not start a session — please try again.');
+      window.location.assign(getNext());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
       setBusy(false);
@@ -75,15 +72,10 @@ export default function LoginPage() {
     try {
       const r = await fetch('/api/demo-login', { method: 'POST' }).then((x) => x.json());
       if (!r.otp) throw new Error(r.error || 'Demo unavailable');
-      const verifyRes = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: r.email, otp: r.otp }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed');
-
-      window.location.href = getNext();
+      const { data, error } = await sb.auth.verifyOtp({ email: r.email, token: r.otp, type: 'email' });
+      if (error) throw error;
+      if (!data.session) throw new Error('Could not start demo session.');
+      window.location.assign('/authority');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Demo login failed');
       setBusy(false);

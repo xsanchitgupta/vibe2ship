@@ -19,24 +19,22 @@ export function useSession() {
 
   const load = useCallback(async () => {
     const sb = createClient();
-    if (!sb) return;
-
-    // Use getSession() first — it reads directly from cookies (shared across
-    // tabs) instead of the in-memory token cache that getUser() relies on.
+    if (!sb) {
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user) {
       setProfile(null);
       setLoading(false);
       return;
     }
-
     const user = session.user;
     const { data } = await sb
       .from('profiles')
       .select('name, avatar, role')
       .eq('id', user.id)
       .maybeSingle();
-
     setProfile({
       id: user.id,
       name: data?.name ?? user.email?.split('@')[0] ?? 'You',
@@ -56,8 +54,13 @@ export function useSession() {
     // Initial load
     load();
 
-    // Listen for auth state changes (works within the same tab)
-    const { data: sub } = sb.auth.onAuthStateChange(() => load());
+    // Listen for auth state changes. IMPORTANT: defer with setTimeout — calling
+    // supabase methods (getSession / from()) synchronously inside this callback
+    // deadlocks on the GoTrue auth lock, so the profile fetch hangs forever and
+    // the UI stays "logged out". Deferring lets the lock release first.
+    const { data: sub } = sb.auth.onAuthStateChange(() => {
+      setTimeout(() => load(), 0);
+    });
 
     // When the user switches to this tab, re-check the session from cookies.
     // This catches the case where login happened in another tab.
